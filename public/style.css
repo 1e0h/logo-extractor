@@ -146,10 +146,51 @@ body {
   flex-direction: column;
 }
 
+/* ── Top Navigation ───────────────────────────── */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-bottom: var(--space-md);
+}
+
+.btn-back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.btn-back-home:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: rgba(var(--accent-primary-rgb), 0.4);
+  transform: translateX(-3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-back-home svg {
+  transition: transform var(--transition-fast);
+}
+
+.btn-back-home:hover svg {
+  transform: translateX(-2px);
+}
+
 /* ── Hero Section ─────────────────────────────── */
 .hero {
   text-align: center;
-  padding: var(--space-4xl) 0 var(--space-2xl);
+  padding: var(--space-2xl) 0 var(--space-2xl);
   animation: fade-up 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
