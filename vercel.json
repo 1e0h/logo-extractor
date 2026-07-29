@@ -7,14 +7,15 @@
   },
   "rewrites": [
     { "source": "/logo-extractor/api/extract-logo", "destination": "/api/extract-logo" },
+    { "source": "/logo-extractor/style.css", "destination": "/style.css" },
+    { "source": "/logo-extractor/app.js", "destination": "/app.js" },
     { "source": "/logo-extractor/(.*)", "destination": "/$1" },
     { "source": "/logo-extractor", "destination": "/index.html" }
   ],
   "headers": [
     {
-      "source": "/(.*)api/(.*)",
+      "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "s-maxage=3600, stale-while-revalidate" },
         { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
