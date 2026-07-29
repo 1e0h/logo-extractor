@@ -5,11 +5,17 @@
       "memory": 1024
     }
   },
+  "rewrites": [
+    { "source": "/logo-extractor/api/extract-logo", "destination": "/api/extract-logo" },
+    { "source": "/logo-extractor/(.*)", "destination": "/$1" },
+    { "source": "/logo-extractor", "destination": "/index.html" }
+  ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(.*)api/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "s-maxage=3600, stale-while-revalidate" }
+        { "key": "Cache-Control", "value": "s-maxage=3600, stale-while-revalidate" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
   ]
