@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logo Extractor — サイトからロゴを自動取得＆透過PNG変換</title>
+  <meta name="description" content="URLを入力するだけで、Webサイトのロゴを自動検出し、透過PNGとしてダウンロードできます。SVG・JPG・PNGすべてに対応。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Animated background mesh -->
+  <div class="bg-mesh" aria-hidden="true">
+    <div class="bg-orb bg-orb--1"></div>
+    <div class="bg-orb bg-orb--2"></div>
+    <div class="bg-orb bg-orb--3"></div>
+  </div>
+
+  <main class="container">
+    <!-- Hero Section -->
+    <header class="hero" id="hero-section">
+      <div class="hero__badge">
+        <span class="hero__badge-dot"></span>
+        Free &amp; Open Source
+      </div>
+      <h1 class="hero__title">
+        <span class="hero__title-gradient">Logo Extractor</span>
+      </h1>
+      <p class="hero__subtitle">
+        URLを入力するだけで、サイトのロゴを自動検出。<br>
+        SVG・JPG・PNG — すべて<strong>透過PNG</strong>に変換してダウンロード。
+      </p>
+    </header>
+
+    <!-- URL Input Section -->
+    <section class="input-section" id="input-section">
+      <form class="input-card" id="extract-form" autocomplete="off">
+        <div class="input-wrapper">
+          <div class="input-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="m21 21-4.35-4.35"/>
+            </svg>
+          </div>
+          <input
+            type="text"
+            id="url-input"
+            class="url-input"
+            placeholder="例: apple.com, https://google.com"
+            required
+            spellcheck="false"
+          >
+          <button type="submit" class="btn-extract" id="btn-extract">
+            <span class="btn-extract__text">ロゴを取得</span>
+            <span class="btn-extract__loader" aria-hidden="true">
+              <svg class="spinner" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="10"/>
+              </svg>
+            </span>
+          </button>
+        </div>
+        <p class="input-hint" id="input-hint">ホームページのURLを入力してください</p>
+      </form>
+    </section>
+
+    <!-- Loading State -->
+    <section class="loading-section hidden" id="loading-section">
+      <div class="loading-card">
+        <div class="loading-animation">
+          <div class="loading-ring">
+            <div class="loading-ring__circle"></div>
+          </div>
+          <div class="loading-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
+              <polyline points="7.5 19.79 7.5 14.6 3 12"/>
+              <polyline points="21 12 16.5 14.6 16.5 19.79"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+        </div>
+        <h3 class="loading-title">ロゴを検出中...</h3>
+        <p class="loading-status" id="loading-status">Webページを取得しています</p>
+        <div class="loading-progress">
+          <div class="loading-progress__bar" id="loading-progress-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Error State -->
+    <section class="error-section hidden" id="error-section">
+      <div class="error-card">
+        <div class="error-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <h3 class="error-title">取得に失敗しました</h3>
+        <p class="error-message" id="error-message"></p>
+        <button class="btn-retry" id="btn-retry">もう一度試す</button>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section hidden" id="results-section">
+      <div class="results-header">
+        <h2 class="results-title">
+          検出されたロゴ
+          <span class="results-domain" id="results-domain"></span>
+        </h2>
+        <button class="btn-new-search" id="btn-new-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+          新しいURLで検索
+        </button>
+      </div>
+      <div class="results-grid" id="results-grid">
+        <!-- Logo cards will be inserted here -->
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer" id="footer">
+      <p>
+        Built with
+        <svg class="footer-heart" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        — Logo Extractor
+      </p>
+    </footer>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
