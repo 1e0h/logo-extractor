@@ -202,7 +202,11 @@
     startLoadingProgress();
 
     try {
-      const response = await fetch('/api/extract-logo', {
+      const apiEndpoint = window.location.pathname.endsWith('/')
+        ? `${window.location.pathname}api/extract-logo`
+        : `${window.location.pathname}/api/extract-logo`;
+
+      const response = await fetch(apiEndpoint.replace(/\/+/g, '/').replace(':/', '://'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
