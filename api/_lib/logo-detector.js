@@ -20,6 +20,45 @@ function resolveUrl(href, baseUrl) {
   }
 }
 
+/** Structural / path identifiers — safe to match anywhere including URLs */
+const STRUCTURAL_LOGO_RE = /logo|site[-_]?icon|company[-_]?mark|brand[-_]?(?:logo|mark|image|img)?/i;
+/** Free-text fields (alt, aria) — avoid "brand new" style false positives */
+const TEXT_LOGO_RE = /\blogo\b|\bsite[-_]?icon\b|\bcompany[-_]?mark\b/i;
+/** Parent container selectors that usually wrap the real site logo */
+const LOGO_PARENT_SELECTOR =
+  '[class*="logo" i], [id*="logo" i], [class*="brand" i], [id*="brand" i]';
+const HEADER_SELECTOR =
+  'header, [class*="header" i], [id*="header" i], [class*="nav" i], nav, [role="banner"]';
+
+function isSameSite(imageUrl, pageUrl) {
+  try {
+    if (imageUrl.startsWith('data:')) return true;
+    const imgHost = new URL(imageUrl).hostname.replace(/^www\./, '');
+    const pageHost = new URL(pageUrl).hostname.replace(/^www\./, '');
+    return imgHost === pageHost || imgHost.endsWith('.' + pageHost) || pageHost.endsWith('.' + imgHost);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Score an <img> that looks like a logo.
+ */
+function scoreLogoImage({ isInLogoParent, isInHeader, alt, resolvedSrc, baseUrl }) {
+  let score = 70;
+
+  if (isInLogoParent) score += 25;
+  if (isInHeader) score += 8;
+  if (isSameSite(resolvedSrc, baseUrl)) score += 5;
+  else score -= 15;
+
+  // Long alt text is usually a news/article caption, not a logo label
+  if (alt.length > 60) score -= 40;
+  else if (alt.length > 30) score -= 15;
+
+  return score;
+}
+
 /**
  * Extract logo candidates from HTML content.
  * Returns an array of { url, score, source, meta } sorted by score descending.
@@ -38,7 +77,7 @@ function detectLogos(html, baseUrl) {
   }
 
   // ────────────────────────────────────────────────
-  // Strategy 1: <img> tags with logo-related attributes (highest priority)
+  // Strategy 1: <img> tags with logo-related attributes / parents
   // ────────────────────────────────────────────────
   $('img').each((_, el) => {
     const src = $(el).attr('src');
@@ -55,25 +94,41 @@ function detectLogos(html, baseUrl) {
     const resolvedSrc = resolveUrl(imgSrc, baseUrl);
     if (!resolvedSrc) return;
 
-    const searchTexts = [alt, className, id, imgSrc.toLowerCase(), ariaLabel];
-    const logoPatterns = [/logo/i, /brand/i, /site[-_]?icon/i, /company[-_]?mark/i];
-
-    const isLogo = searchTexts.some(text =>
-      logoPatterns.some(pattern => pattern.test(text))
+    const isInLogoParent = $(el).closest(LOGO_PARENT_SELECTOR).length > 0;
+    const structuralHit = [className, id, imgSrc.toLowerCase()].some((t) =>
+      STRUCTURAL_LOGO_RE.test(t)
     );
+    // alt/aria: only clear logo words — not "brand" (matches "brand new" in headlines)
+    const textHit = [alt, ariaLabel].some((t) => TEXT_LOGO_RE.test(t));
 
-    if (isLogo) {
-      // Check if it's in the header area for higher priority
-      const isInHeader = $(el).closest('header, [class*="header"], [id*="header"], [class*="nav"], nav').length > 0;
-      const score = isInHeader ? 95 : 90;
-      addCandidate(resolvedSrc, score, 'img-logo', { alt, isInHeader });
+    if (!isInLogoParent && !structuralHit && !textHit) return;
 
-      // If there's a higher-res version in srcset, prefer that
-      if (srcset) {
-        const highResSrc = extractBestFromSrcset(srcset, baseUrl);
-        if (highResSrc) {
-          addCandidate(highResSrc, score + 1, 'img-logo-srcset', { alt, isInHeader });
-        }
+    const isInHeader = $(el).closest(HEADER_SELECTOR).length > 0;
+    const score = scoreLogoImage({
+      isInLogoParent,
+      isInHeader,
+      alt,
+      resolvedSrc,
+      baseUrl,
+    });
+
+    // Skip weak false positives (e.g. news thumbs that only matched loosely)
+    if (score < 50) return;
+
+    addCandidate(resolvedSrc, score, isInLogoParent ? 'img-logo-parent' : 'img-logo', {
+      alt,
+      isInHeader,
+      isInLogoParent,
+    });
+
+    if (srcset) {
+      const highResSrc = extractBestFromSrcset(srcset, baseUrl);
+      if (highResSrc) {
+        addCandidate(highResSrc, score + 1, 'img-logo-srcset', {
+          alt,
+          isInHeader,
+          isInLogoParent,
+        });
       }
     }
   });
