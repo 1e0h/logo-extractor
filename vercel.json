@@ -3,10 +3,15 @@
     "api/extract-logo.js": {
       "maxDuration": 30,
       "memory": 1024
+    },
+    "api/download-logo.js": {
+      "maxDuration": 30,
+      "memory": 1024
     }
   },
   "rewrites": [
     { "source": "/logo-extractor/api/extract-logo", "destination": "/api/extract-logo" },
+    { "source": "/logo-extractor/api/download-logo", "destination": "/api/download-logo" },
     { "source": "/logo-extractor/style.css", "destination": "/style.css" },
     { "source": "/logo-extractor/app.js", "destination": "/app.js" },
     { "source": "/logo-extractor/(.*)", "destination": "/$1" },

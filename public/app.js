@@ -99,6 +99,7 @@
   function getSourceLabel(source) {
     const labels = {
       'img-logo': 'HTMLロゴ画像',
+      'img-logo-parent': 'HTMLロゴ画像',
       'img-logo-srcset': 'HTMLロゴ画像 (高解像度)',
       'inline-svg': 'インラインSVG',
       'apple-touch-icon': 'Apple Touch Icon',
@@ -114,8 +115,21 @@
     return labels[source] || source;
   }
 
+  function getBaseDir() {
+    return window.location.pathname.includes('logo-extractor') ? '/logo-extractor' : '';
+  }
+
+  /** Absolute URL that triggers a direct PNG download when opened (for LINE etc.) */
+  function buildDownloadShareUrl(sourceUrl, index) {
+    const params = new URLSearchParams({
+      url: sourceUrl,
+      index: String(index),
+    });
+    return `${window.location.origin}${getBaseDir()}/api/download-logo?${params.toString()}`;
+  }
+
   // ── Create Logo Card ──────────────────────────
-  function createLogoCard(logo, index, domain) {
+  function createLogoCard(logo, index, domain, sourceUrl) {
     const card = document.createElement('div');
     card.className = 'logo-card';
     card.style.animationDelay = `${index * 100}ms`;
@@ -138,20 +152,31 @@
           <span class="logo-card__size">${formatFileSize(logo.fileSize)}</span>
         </div>
         <div class="logo-card__dimensions">${logo.width} × ${logo.height} px</div>
-        <button class="btn-download" data-index="${index}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          透過PNGをダウンロード
-        </button>
+        <div class="logo-card__actions">
+          <button type="button" class="btn-download" data-index="${index}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            ダウンロード
+          </button>
+          <button type="button" class="btn-share" data-index="${index}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            共有
+          </button>
+        </div>
       </div>
     `;
 
-    // Attach download handler
-    const downloadBtn = card.querySelector('.btn-download');
-    downloadBtn.addEventListener('click', () => downloadLogo(logo, domain));
+    card.querySelector('.btn-download').addEventListener('click', () => downloadLogo(logo, domain));
+    card.querySelector('.btn-share').addEventListener('click', () => shareLogo(domain, sourceUrl, index));
 
     return card;
   }
@@ -166,13 +191,35 @@
     document.body.removeChild(link);
   }
 
+  // ── Share download URL (LINE / native share sheet) ──
+  async function shareLogo(domain, sourceUrl, index) {
+    const shareUrl = buildDownloadShareUrl(sourceUrl, index);
+    const title = `${domain} のロゴ`;
+    const text = `${domain} の透過PNGロゴ（タップでダウンロード）`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url: shareUrl });
+        return;
+      }
+    } catch (err) {
+      // User cancelled share sheet — ignore
+      if (err && err.name === 'AbortError') return;
+      console.error('Share API error:', err);
+    }
+
+    // Fallback: open LINE share dialog with the download URL
+    const lineUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`;
+    window.open(lineUrl, '_blank', 'noopener,noreferrer');
+  }
+
   // ── Display Results ───────────────────────────
-  function displayResults(data) {
+  function displayResults(data, sourceUrl) {
     resultsDomain.textContent = data.domain;
     resultsGrid.innerHTML = '';
 
     data.logos.forEach((logo, index) => {
-      const card = createLogoCard(logo, index, data.domain);
+      const card = createLogoCard(logo, index, data.domain, sourceUrl);
       resultsGrid.appendChild(card);
     });
 
@@ -202,8 +249,7 @@
     startLoadingProgress();
 
     try {
-      const baseDir = window.location.pathname.includes('logo-extractor') ? '/logo-extractor' : '';
-      const apiEndpoint = `${baseDir}/api/extract-logo`;
+      const apiEndpoint = `${getBaseDir()}/api/extract-logo`;
 
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -223,7 +269,7 @@
         return;
       }
 
-      displayResults(data);
+      displayResults(data, url);
     } catch (err) {
       stopLoadingProgress(false);
 
