@@ -102,6 +102,8 @@
       'img-logo-parent': 'HTMLロゴ画像',
       'img-logo-srcset': 'HTMLロゴ画像 (高解像度)',
       'inline-svg': 'インラインSVG',
+      'studio-header-logo': 'Studioヘッダーロゴ',
+      'studio-page-image': 'Studioページ画像',
       'apple-touch-icon': 'Apple Touch Icon',
       'og:image': 'OGP画像',
       'twitter:image': 'Twitter Card',

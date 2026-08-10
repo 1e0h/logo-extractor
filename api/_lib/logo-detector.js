@@ -176,22 +176,25 @@ function detectLogos(html, baseUrl) {
   });
 
   // ────────────────────────────────────────────────
-  // Strategy 4: Open Graph image
+  // Strategy 4: Open Graph / Twitter images
+  // (Often social banners — kept as fallback, not preferred over icons)
   // ────────────────────────────────────────────────
   const ogImage = $('meta[property="og:image"]').attr('content');
   if (ogImage) {
     const resolvedOg = resolveUrl(ogImage, baseUrl);
     if (resolvedOg) {
-      addCandidate(resolvedOg, 60, 'og:image', {});
+      addCandidate(resolvedOg, 40, 'og:image', {});
     }
   }
 
-  // Twitter card image
-  const twitterImage = $('meta[name="twitter:image"]').attr('content');
+  // Twitter card image (name= or property=)
+  const twitterImage =
+    $('meta[name="twitter:image"]').attr('content') ||
+    $('meta[property="twitter:image"]').attr('content');
   if (twitterImage) {
     const resolvedTwitter = resolveUrl(twitterImage, baseUrl);
     if (resolvedTwitter) {
-      addCandidate(resolvedTwitter, 55, 'twitter:image', {});
+      addCandidate(resolvedTwitter, 38, 'twitter:image', {});
     }
   }
 
@@ -247,8 +250,8 @@ function detectLogos(html, baseUrl) {
     addCandidate(`${urlObj.origin}/favicon.ico`, 20, 'default-favicon', {});
     addCandidate(`${urlObj.origin}/logo.png`, 15, 'default-logo-path', {});
     addCandidate(
-      `https://www.google.com/s2/favicons?sz=128&domain=${urlObj.hostname}`,
-      10,
+      `https://www.google.com/s2/favicons?sz=256&domain=${urlObj.hostname}`,
+      12,
       'google-favicon-api',
       {}
     );

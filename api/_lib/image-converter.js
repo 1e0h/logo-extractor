@@ -211,4 +211,31 @@ async function convertToTransparentPng(buffer, contentType = '') {
   return { buffer: result.data, width: result.info.width, height: result.info.height };
 }
 
-module.exports = { convertToTransparentPng, isSvgBuffer };
+/**
+ * Upscale small square logos so they are usable as downloads.
+ * Banners / wide images are left unchanged.
+ */
+async function upscaleSmallSquareLogo(buffer, width, height, minSize = 512) {
+  if (!width || !height) return { buffer, width, height };
+  if (width >= minSize && height >= minSize) return { buffer, width, height };
+
+  const aspect = width / height;
+  if (aspect < 0.7 || aspect > 1.4) return { buffer, width, height };
+
+  try {
+    const result = await sharp(buffer)
+      .resize(minSize, minSize, {
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+        kernel: sharp.kernel.lanczos3,
+      })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+    return { buffer: result.data, width: result.info.width, height: result.info.height };
+  } catch (err) {
+    console.error('Upscale failed:', err.message);
+    return { buffer, width, height };
+  }
+}
+
+module.exports = { convertToTransparentPng, isSvgBuffer, upscaleSmallSquareLogo };
