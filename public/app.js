@@ -140,12 +140,7 @@
 
     card.innerHTML = `
       <div class="logo-card__preview">
-        ${isBest ? `
-          <div class="logo-card__best-badge">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            Best Match
-          </div>
-        ` : ''}
+        ${isBest ? `<div class="logo-card__best-badge">おすすめ</div>` : ''}
         <img src="${logo.base64}" alt="${domain} logo" loading="lazy">
       </div>
       <div class="logo-card__info">
@@ -155,16 +150,16 @@
         </div>
         <div class="logo-card__dimensions">${logo.width} × ${logo.height} px</div>
         <div class="logo-card__actions">
-          <button type="button" class="btn-download" data-index="${index}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="btn btn--tint" data-action="download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
             ダウンロード
           </button>
-          <button type="button" class="btn-share" data-index="${index}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="btn btn--share" data-action="share">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="18" cy="5" r="3"/>
               <circle cx="6" cy="12" r="3"/>
               <circle cx="18" cy="19" r="3"/>
@@ -177,8 +172,8 @@
       </div>
     `;
 
-    card.querySelector('.btn-download').addEventListener('click', () => downloadLogo(logo, domain));
-    card.querySelector('.btn-share').addEventListener('click', () => shareLogo(domain, sourceUrl, index));
+    card.querySelector('[data-action="download"]').addEventListener('click', () => downloadLogo(logo, domain));
+    card.querySelector('[data-action="share"]').addEventListener('click', () => shareLogo(domain, sourceUrl, index));
 
     return card;
   }
