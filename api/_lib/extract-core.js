@@ -25,7 +25,13 @@ const ICON_SOURCES = new Set([
   'inline-svg',
   'studio-header-logo',
   'studio-page-image',
+  'deep-header-img',
+  'deep-srcset',
+  'deep-css-bg',
+  'deep-default-path',
 ]);
+
+const MAX_LOGOS_DEEP = 12;
 
 function normalizeUrl(input) {
   let url = String(input || '').trim();
@@ -167,6 +173,7 @@ function refineLogoScore(logo) {
   if (isHtmlLogo) score += 20;
   if (logo.source === 'studio-header-logo') score += 30;
   if (logo.source === 'studio-page-image') score += 10;
+  if (logo.source === 'deep-header-img') score += 12;
   if (isSquare) score += 15;
   if (ICON_SOURCES.has(logo.source) && isSquare) score += 10;
 
@@ -233,12 +240,21 @@ async function processCandidate(candidate, { skipHeavyBanners }) {
 /**
  * Extract logo PNGs from a website URL.
  * @param {string} rawUrl
- * @param {{ maxLogos?: number, includeBase64?: boolean }} [options]
- * @returns {Promise<{ domain: string, logos: Array }>}
+ * @param {{
+ *   maxLogos?: number,
+ *   includeBase64?: boolean,
+ *   deep?: boolean,
+ *   excludeUrls?: string[],
+ * }} [options]
+ * @returns {Promise<{ domain: string, logos: Array, deep: boolean }>}
  */
 async function extractLogosFromUrl(rawUrl, options = {}) {
-  const maxLogos = options.maxLogos ?? MAX_LOGOS;
+  const deep = Boolean(options.deep);
+  const maxLogos = options.maxLogos ?? (deep ? MAX_LOGOS_DEEP : MAX_LOGOS);
   const includeBase64 = options.includeBase64 !== false;
+  const excludeUrls = new Set(
+    (options.excludeUrls || []).filter((u) => typeof u === 'string' && u && u !== '(inline)')
+  );
 
   const url = normalizeUrl(rawUrl);
   const domain = new URL(url).hostname;
@@ -253,11 +269,11 @@ async function extractLogosFromUrl(rawUrl, options = {}) {
     });
   }
 
-  let candidates = detectLogos(html, url);
+  let candidates = detectLogos(html, url, { deep });
 
   // Studio.Design SPAs: logo lives in client-rendered header (page-views JSON)
   try {
-    const studioLogos = await detectStudioDesignLogos(html);
+    const studioLogos = await detectStudioDesignLogos(html, { deep });
     if (studioLogos.length > 0) {
       candidates = candidates.concat(studioLogos);
       candidates.sort((a, b) => b.score - a.score);
@@ -273,16 +289,25 @@ async function extractLogosFromUrl(rawUrl, options = {}) {
     candidates.sort((a, b) => b.score - a.score);
   }
 
+  // Deep search: skip URLs already shown to the user
+  if (excludeUrls.size > 0) {
+    candidates = candidates.filter((c) => !excludeUrls.has(c.url));
+  }
+
   candidates = prioritizeCandidates(candidates);
-  const topCandidates = candidates.slice(0, Math.max(maxLogos, 8));
+  const candidateLimit = deep ? Math.max(maxLogos, 16) : Math.max(maxLogos, 8);
+  const topCandidates = candidates.slice(0, candidateLimit);
   const hasIconCandidate = topCandidates.some(
     (c) => ICON_SOURCES.has(c.source) || /logo/i.test(c.source)
   );
 
+  // In deep mode, still process social/banner candidates (user asked for more options)
+  const skipHeavyBanners = deep ? false : hasIconCandidate;
+
   const imageResults = await Promise.all(
     topCandidates.map(async (candidate) => {
       try {
-        return await processCandidate(candidate, { skipHeavyBanners: hasIconCandidate });
+        return await processCandidate(candidate, { skipHeavyBanners });
       } catch (err) {
         console.error(`Failed to process ${candidate.source}: ${err.message}`);
         return null;
@@ -295,15 +320,33 @@ async function extractLogosFromUrl(rawUrl, options = {}) {
     score: refineLogoScore(logo),
   }));
 
-  logos = logos.filter((logo) => logo.score >= 20);
+  const minScore = deep ? 5 : 20;
+  logos = logos.filter((logo) => logo.score >= minScore);
+  // Dedupe by originalUrl after processing
+  const seenOut = new Set();
+  logos = logos.filter((logo) => {
+    const key = logo.originalUrl || '';
+    if (!key || seenOut.has(key)) return false;
+    if (excludeUrls.has(key)) return false;
+    seenOut.add(key);
+    return true;
+  });
+
   logos.sort((a, b) => b.score - a.score);
   logos = logos.slice(0, maxLogos);
 
   if (logos.length === 0) {
-    throw Object.assign(new Error('No logos could be extracted from this website.'), {
-      statusCode: 404,
-      domain,
-    });
+    throw Object.assign(
+      new Error(
+        deep
+          ? 'No additional logo candidates were found.'
+          : 'No logos could be extracted from this website.'
+      ),
+      {
+        statusCode: 404,
+        domain,
+      }
+    );
   }
 
   if (includeBase64) {
@@ -312,7 +355,7 @@ async function extractLogosFromUrl(rawUrl, options = {}) {
     }
   }
 
-  return { domain, logos };
+  return { domain, logos, deep };
 }
 
 function safeFilename(domain) {
@@ -324,4 +367,5 @@ module.exports = {
   extractLogosFromUrl,
   safeFilename,
   MAX_LOGOS,
+  MAX_LOGOS_DEEP,
 };

@@ -549,19 +549,59 @@ body {
   transform: scale(1.03);
 }
 
-.logo-card__best-badge {
+.logo-card__best-badge,
+.logo-card__extra-badge {
   position: absolute;
   top: var(--space-3);
   left: var(--space-3);
   padding: 4px 10px;
-  background: color-mix(in srgb, var(--system-blue) 92%, transparent);
-  color: #FFFFFF;
   border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.01em;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+
+.logo-card__best-badge {
+  background: color-mix(in srgb, var(--system-blue) 92%, transparent);
+  color: #FFFFFF;
+}
+
+.logo-card__extra-badge {
+  left: auto;
+  right: var(--space-3);
+  background: color-mix(in srgb, var(--system-orange) 90%, transparent);
+  color: #FFFFFF;
+}
+
+/* ── Deep search CTA ──────────────────────────── */
+.deep-search {
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  text-align: center;
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.deep-search__text {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  margin-bottom: var(--space-4);
+  color: var(--label-primary);
+}
+
+.deep-search .btn {
+  width: min(280px, 100%);
+  margin: 0 auto;
+}
+
+.deep-search__hint {
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--label-secondary);
 }
 
 .logo-card__info {

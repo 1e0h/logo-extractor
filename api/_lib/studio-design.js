@@ -151,9 +151,12 @@ async function fetchJson(url) {
  * by reading __NUXT_DATA__ + studio-publish page-views JSON
  * (covers header > h1 > img that only exists after client render).
  *
+ * @param {string} html
+ * @param {{ deep?: boolean }} [options]
  * @returns {Promise<Array<{ url: string, score: number, source: string, meta: object }>>}
  */
-async function detectStudioDesignLogos(html) {
+async function detectStudioDesignLogos(html, options = {}) {
+  const deep = Boolean(options.deep);
   if (!isStudioDesignHtml(html)) return [];
 
   const nuxtData = parseNuxtData(html);
@@ -163,8 +166,8 @@ async function detectStudioDesignLogos(html) {
   const uuids = findPageUuids(nuxtData);
   if (uuids.length === 0) return [];
 
-  // Fetch a limited number of page-views in parallel
-  const limited = uuids.slice(0, 12);
+  // Deep mode: scan more page-views
+  const limited = uuids.slice(0, deep ? 24 : 12);
   const views = await Promise.all(
     limited.map(async (id) => {
       try {
@@ -191,29 +194,34 @@ async function detectStudioDesignLogos(html) {
 
     const score = scoreStudioImage(img);
     const blob = `${img.name} ${img.alt} ${img.url}`;
-    const keep =
-      score >= 90 ||
-      (img.inHeader && img.inH1) ||
-      (img.inHeader && /logo/i.test(blob)) ||
-      (/logo/i.test(blob) && score >= 80);
+    const keep = deep
+      ? score >= 55 ||
+        img.inHeader ||
+        img.inH1 ||
+        /logo|brand|icon|mark/i.test(blob)
+      : score >= 90 ||
+        (img.inHeader && img.inH1) ||
+        (img.inHeader && /logo/i.test(blob)) ||
+        (/logo/i.test(blob) && score >= 80);
 
     if (!keep) continue;
 
     candidates.push({
       url: img.url,
-      score,
+      score: deep && !img.inHeader ? score : score,
       source: img.inHeader || /logo/i.test(blob) ? 'studio-header-logo' : 'studio-page-image',
       meta: {
         alt: img.alt,
         name: img.name,
         inHeader: img.inHeader,
         inH1: img.inH1,
+        deep,
       },
     });
   }
 
   candidates.sort((a, b) => b.score - a.score);
-  return candidates.slice(0, 6);
+  return candidates.slice(0, deep ? 16 : 6);
 }
 
 module.exports = {

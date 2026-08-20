@@ -62,8 +62,12 @@ function scoreLogoImage({ isInLogoParent, isInHeader, alt, resolvedSrc, baseUrl 
 /**
  * Extract logo candidates from HTML content.
  * Returns an array of { url, score, source, meta } sorted by score descending.
+ * @param {string} html
+ * @param {string} baseUrl
+ * @param {{ deep?: boolean }} [options]
  */
-function detectLogos(html, baseUrl) {
+function detectLogos(html, baseUrl, options = {}) {
+  const deep = Boolean(options.deep);
   const $ = cheerio.load(html);
   const candidates = [];
   const seen = new Set();
@@ -255,8 +259,82 @@ function detectLogos(html, baseUrl) {
       'google-favicon-api',
       {}
     );
+
+    if (deep) {
+      const deepPaths = [
+        '/logo.svg',
+        '/logo.webp',
+        '/images/logo.png',
+        '/images/logo.svg',
+        '/img/logo.png',
+        '/assets/logo.png',
+        '/assets/images/logo.png',
+        '/static/logo.png',
+        '/wp-content/uploads/logo.png',
+      ];
+      for (const path of deepPaths) {
+        addCandidate(`${urlObj.origin}${path}`, 18, 'deep-default-path', { path });
+      }
+      addCandidate(
+        `https://www.google.com/s2/favicons?sz=128&domain=${urlObj.hostname}`,
+        11,
+        'google-favicon-api',
+        {}
+      );
+    }
   } catch {
     // ignore URL parse errors
+  }
+
+  // ────────────────────────────────────────────────
+  // Deep mode: broader header/nav image sweep
+  // ────────────────────────────────────────────────
+  if (deep) {
+    $(`${HEADER_SELECTOR} img, a[href="/"] img, a[href="./"] img, .navbar img, .site-header img`).each(
+      (_, el) => {
+        const src = $(el).attr('src') || $(el).attr('data-src') || $(el).attr('data-lazy-src');
+        if (!src) return;
+        const resolvedSrc = resolveUrl(src, baseUrl);
+        if (!resolvedSrc) return;
+        const alt = ($(el).attr('alt') || '').toLowerCase();
+        if (alt.length > 80) return; // likely article thumb
+        const isInHeader = $(el).closest(HEADER_SELECTOR).length > 0;
+        addCandidate(resolvedSrc, isInHeader ? 58 : 48, 'deep-header-img', {
+          alt,
+          isInHeader,
+          deep: true,
+        });
+      }
+    );
+
+    // picture > source srcset
+    $('picture source, img[srcset]').each((_, el) => {
+      const srcset = $(el).attr('srcset');
+      if (!srcset) return;
+      const best = extractBestFromSrcset(srcset, baseUrl);
+      if (!best) return;
+      const inHeader = $(el).closest(HEADER_SELECTOR).length > 0;
+      if (!inHeader && !/logo|brand|icon/i.test(srcset)) return;
+      addCandidate(best, inHeader ? 56 : 42, 'deep-srcset', { deep: true });
+    });
+
+    // CSS inline background-image with logo-ish URLs
+    $('[style*="background"]').each((_, el) => {
+      const style = $(el).attr('style') || '';
+      const match = style.match(/url\(['"]?([^'")]+)['"]?\)/i);
+      if (!match) return;
+      const href = match[1];
+      if (!/logo|brand|icon|mark/i.test(href + ' ' + (($(el).attr('class') || '')))) return;
+      const resolved = resolveUrl(href, baseUrl);
+      if (resolved) addCandidate(resolved, 50, 'deep-css-bg', { deep: true });
+    });
+
+    // Boost social images slightly in deep mode (already added above)
+    candidates.forEach((c) => {
+      if (c.source === 'og:image' || c.source === 'twitter:image') {
+        c.score += 8;
+      }
+    });
   }
 
   // Sort by score descending
